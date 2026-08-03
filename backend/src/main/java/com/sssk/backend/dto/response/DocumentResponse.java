@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 public record DocumentResponse(
         Long id,
         String originalFileName,
-        String uploadStatus,
+        String status,
         Long fileSize,
         LocalDateTime uploadedAt,
         String extractedText

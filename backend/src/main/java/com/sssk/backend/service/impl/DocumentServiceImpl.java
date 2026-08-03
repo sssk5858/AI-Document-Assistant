@@ -8,9 +8,11 @@ import com.sssk.backend.exception.ResourceNotFoundException;
 import com.sssk.backend.exception.StorageException;
 import com.sssk.backend.mapper.DocumentMapper;
 import com.sssk.backend.repository.DocumentRepository;
+import com.sssk.backend.entity.DocumentStatus;
+import com.sssk.backend.event.DocumentUploadedEvent;
 import com.sssk.backend.service.DocumentService;
-import com.sssk.backend.service.TextExtractionService;
 import com.sssk.backend.util.FileUtil;
+import org.springframework.context.ApplicationEventPublisher;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +33,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final MinioClient minioClient;
     private final MinioProperties minioProperties;
-    private final TextExtractionService textExtractionService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -63,28 +65,27 @@ public class DocumentServiceImpl implements DocumentService {
             throw new StorageException("Failed to upload file to object storage", e);
         }
 
-        // 3.5. Extract Text using Apache Tika
-        String extractedText = null;
-        try {
-            extractedText = textExtractionService.extractText(file.getInputStream());
-        } catch (Exception e) {
-            log.error("Failed to read input stream for text extraction from file '{}'", originalFileName, e);
-        }
-
-        // 4. Create and save Document entity
+        // 4. Create and save Document entity with UPLOADED status
         Document document = Document.builder()
                 .originalFileName(originalFileName)
                 .objectName(objectName)
                 .bucketName(minioProperties.getBucketName())
                 .contentType(contentType)
                 .fileSize(fileSize)
-                .uploadStatus(ApplicationConstants.UPLOAD_STATUS_SUCCESS)
-                .extractedText(extractedText)
+                .status(DocumentStatus.UPLOADED)
                 .uploadedAt(LocalDateTime.now())
                 .build();
 
         Document savedDocument = documentRepository.save(document);
         log.info("Saved document metadata in database with ID: {}", savedDocument.getId());
+
+        // 4.5. Publish event for asynchronous background processing
+        try {
+            eventPublisher.publishEvent(new DocumentUploadedEvent(savedDocument.getId()));
+            log.info("Successfully published DocumentUploadedEvent for document ID: {}", savedDocument.getId());
+        } catch (Exception e) {
+            log.error("Failed to publish DocumentUploadedEvent for document ID: {}", savedDocument.getId(), e);
+        }
 
         // 5. Convert and return response
         return DocumentMapper.toResponse(savedDocument);

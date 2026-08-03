@@ -94,5 +94,26 @@ Integrated Apache Tika to automatically extract text content from uploaded files
 ### Verification
 - Executed `.\mvnw clean compile` showing `BUILD SUCCESS` with compilation of all 23 source files.
 
+---
+
+## [2026-08-04] Step 7: Refactor Document Processing to Asynchronous Background Processing
+
+### Overview
+Refactored the synchronous text extraction process to execute asynchronously in the background. The upload API now returns immediately once files are stored in MinIO and registered as metadata in PostgreSQL with status `UPLOADED`. Processing is triggered via Spring Application Events and executed by a task executor thread pool, transitioning document state through `PROCESSING`, `COMPLETED`, or `FAILED`.
+
+### Added/Modified Files
+- [AsyncConfig.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/config/AsyncConfig.java): Setup Spring Async configuration with custom ThreadPoolTaskExecutor.
+- [DocumentStatus.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/entity/DocumentStatus.java): Defined enum states UPLOADED, PROCESSING, COMPLETED, FAILED.
+- [Document.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/entity/Document.java): Replaced the `uploadStatus` string field with `DocumentStatus` enum mapped as string.
+- [DocumentResponse.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/dto/response/DocumentResponse.java): Changed `uploadStatus` property to `status` to reflect the lifecycle status.
+- [DocumentMapper.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/mapper/DocumentMapper.java): Maps `status` enum name representation into API responses.
+- [DocumentUploadedEvent.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/event/DocumentUploadedEvent.java): Core domain event carrying document ID.
+- [DocumentProcessingListener.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/event/listener/DocumentProcessingListener.java): Triggered after database transaction commits using `@TransactionalEventListener` to avoid database race conditions. Handles event processing on the task executor threads with `@Async`.
+- [DocumentProcessingService.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/service/DocumentProcessingService.java) & [DocumentProcessingServiceImpl.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/service/impl/DocumentProcessingServiceImpl.java): Performs database status transitions, downloads objects from MinIO, invokes Tika parsing, and saves final status and content in database.
+- [DocumentServiceImpl.java](file:///c:/AI-Document-Assistant/backend/src/main/java/com/sssk/backend/service/impl/DocumentServiceImpl.java): Removed synchronous parsing dependency, initializes status to UPLOADED, and publishes transaction-synchronized document uploaded event.
+
+### Verification
+- Executed `.\mvnw clean compile` showing `BUILD SUCCESS` with compilation of all 29 source files.
+
 
 

@@ -13,7 +13,7 @@ public final class DocumentMapper {
         return new DocumentResponse(
                 document.getId(),
                 document.getOriginalFileName(),
-                document.getUploadStatus(),
+                document.getStatus() != null ? document.getStatus().name() : null,
                 document.getFileSize(),
                 document.getUploadedAt(),
                 document.getExtractedText()
