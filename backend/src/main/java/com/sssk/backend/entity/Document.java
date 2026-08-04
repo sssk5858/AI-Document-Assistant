@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import java.util.List;
+
 
 @Entity
 @Table(name = "documents")
@@ -43,6 +45,10 @@ public class Document {
 
     @Column(name = "extracted_text", columnDefinition = "TEXT")
     private String extractedText;
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<DocumentChunk> chunks;
+
 
     @PrePersist
     protected void onCreate() {

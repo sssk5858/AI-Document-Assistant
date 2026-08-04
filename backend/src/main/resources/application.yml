@@ -38,3 +38,9 @@ minio:
   access-key: minioadmin
   secret-key: minioadmin123
   bucket-name: documents
+
+app:
+  chunking:
+    chunk-size: 1000
+    chunk-overlap: 200
+

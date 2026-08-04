@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.io.InputStream;
+import com.sssk.backend.service.ChunkingService;
+
 
 @Service
 @RequiredArgsConstructor
@@ -20,6 +22,8 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
     private final DocumentRepository documentRepository;
     private final MinioClient minioClient;
     private final TextExtractionService textExtractionService;
+    private final ChunkingService chunkingService;
+
 
     @Override
     public void processDocument(Long documentId) {
@@ -51,15 +55,23 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
             extractedText = textExtractionService.extractText(stream);
 
             if (extractedText != null) {
-                finalStatus = DocumentStatus.COMPLETED;
                 log.info("Successfully extracted text from document ID: {}. Length: {} characters", 
                         documentId, extractedText.length());
+                
+                // Persist the extracted text first so chunking runs on saved state
+                document.setExtractedText(extractedText);
+                document = documentRepository.save(document);
+                
+                // Perform chunking
+                chunkingService.chunkAndPersist(document);
+                
+                finalStatus = DocumentStatus.COMPLETED;
             } else {
                 log.warn("Text extraction returned null for document ID: {}", documentId);
             }
 
         } catch (Exception e) {
-            log.error("Failed to process document ID: {} due to exception during file download/parsing", documentId, e);
+            log.error("Failed to process document ID: {} due to exception during file download/parsing/chunking", documentId, e);
         }
 
         // 3. Re-fetch/Update final status and extracted text in database
