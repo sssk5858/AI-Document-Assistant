@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.io.InputStream;
 import com.sssk.backend.service.ChunkingService;
-
+import com.sssk.backend.service.EmbeddingService;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
     private final MinioClient minioClient;
     private final TextExtractionService textExtractionService;
     private final ChunkingService chunkingService;
-
+    private final EmbeddingService embeddingService;
 
     @Override
     public void processDocument(Long documentId) {
@@ -64,6 +64,9 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
                 
                 // Perform chunking
                 chunkingService.chunkAndPersist(document);
+
+                // Generate and store embeddings
+                embeddingService.generateAndStoreEmbeddings(document);
                 
                 finalStatus = DocumentStatus.COMPLETED;
             } else {
@@ -71,7 +74,7 @@ public class DocumentProcessingServiceImpl implements DocumentProcessingService 
             }
 
         } catch (Exception e) {
-            log.error("Failed to process document ID: {} due to exception during file download/parsing/chunking", documentId, e);
+            log.error("Failed to process document ID: {} due to exception during file download/parsing/chunking/embedding", documentId, e);
         }
 
         // 3. Re-fetch/Update final status and extracted text in database

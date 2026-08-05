@@ -1,5 +1,6 @@
 package com.sssk.backend.entity;
 
+import com.sssk.backend.util.FloatArrayToVectorConverter;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -39,6 +40,16 @@ public class DocumentChunk {
 
     @Column(name = "token_count", nullable = false)
     private Integer tokenCount;
+
+    @Column(name = "embedding", columnDefinition = "vector")
+    @Convert(converter = FloatArrayToVectorConverter.class)
+    private float[] embedding;
+
+    @Column(name = "embedding_model")
+    private String embeddingModel;
+
+    @Column(name = "embedded_at")
+    private LocalDateTime embeddedAt;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "embedding_status", nullable = false)

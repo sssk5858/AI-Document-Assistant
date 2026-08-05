@@ -3,6 +3,17 @@ spring:
     name: backend
 
   # ===========================
+  # Spring AI Configuration
+  # ===========================
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        embedding:
+          options:
+            model: text-embedding-004
+
+  # ===========================
   # PostgreSQL Configuration
   # ===========================
   datasource:
